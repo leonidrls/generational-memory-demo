@@ -1,0 +1,587 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Generational Memory</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap">
+<style>
+  /* Layout: a WhatsApp-style phone beside a growing "Book of Life", with a story switcher and a trilingual step-through narrating one memory loop. Dusk-plum brand + warm gold, WhatsApp greens inside the phone. */
+  :root{
+    --bg:#ece9f1; --surface:#ffffff; --panel:#faf8fc;
+    --ink:#241f33; --ink-soft:#5d5572; --ink-faint:#8f879f;
+    --brand:#6a4a9c; --brand-weak:#efe7fb; --accent:#d99b2c;
+    --chat-bg:#e9e0d2; --bubble-in:#ffffff; --bubble-out:#d6f2c4; --bubble-them:#fbeede;
+    --wa:#13a05a; --rose:#d1748a; --line:rgba(30,20,50,.10); --shadow:rgba(40,25,70,.14);
+    --sepia-b:#b6854a;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#14111c; --surface:#211b2c; --panel:#1c1727;
+    --ink:#f0ebf7; --ink-soft:#b6acc8; --ink-faint:#897f9c;
+    --brand:#b89ae6; --brand-weak:#2a2240; --accent:#e6b24a;
+    --chat-bg:#161219; --bubble-in:#2a2335; --bubble-out:#1f3a29; --bubble-them:#30261c;
+    --wa:#36c57f; --rose:#e089a0; --line:rgba(255,255,255,.11); --shadow:rgba(0,0,0,.45);
+    color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#14111c; --surface:#211b2c; --panel:#1c1727;
+    --ink:#f0ebf7; --ink-soft:#b6acc8; --ink-faint:#897f9c;
+    --brand:#b89ae6; --brand-weak:#2a2240; --accent:#e6b24a;
+    --chat-bg:#161219; --bubble-in:#2a2335; --bubble-out:#1f3a29; --bubble-them:#30261c;
+    --wa:#36c57f; --rose:#e089a0; --line:rgba(255,255,255,.11); --shadow:rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Rubik",system-ui,"Segoe UI",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  #app{max-width:980px;margin:0 auto;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));
+    padding-block:22px 34px}
+
+  /* header */
+  .head{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+  .brand{min-width:0}
+  .wordmark{display:flex;align-items:center;gap:10px}
+  .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,var(--brand),#9b78d6);
+    display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 3px 9px var(--shadow)}
+  .wordmark b{font-size:1.28rem;font-weight:700;letter-spacing:.2px}
+  .tag{color:var(--ink-soft);font-size:.9rem;margin-top:5px}
+  .langs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);
+    border-radius:999px;padding:4px;box-shadow:0 2px 8px var(--shadow)}
+  .langs button{border:0;background:transparent;color:var(--ink-soft);font:inherit;font-weight:500;
+    font-size:.86rem;padding:6px 13px;border-radius:999px;cursor:pointer}
+  .langs button[aria-pressed="true"]{background:var(--brand);color:#fff}
+  .langs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* story switcher */
+  .stories{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .stories button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line);
+    background:var(--surface);border-radius:13px;padding:9px 16px;cursor:pointer;font:inherit;color:var(--ink);text-align:start}
+  .stories button b{font-weight:600;font-size:.93rem}
+  .stories button span{font-size:.74rem;color:var(--ink-soft)}
+  .stories button[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-weak)}
+  .stories button[aria-pressed="true"] b{color:var(--brand)}
+  .stories button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* narration */
+  .narr{display:flex;align-items:center;gap:11px;background:var(--brand-weak);
+    border:1px solid var(--line);border-radius:14px;padding:11px 15px;margin-bottom:18px;min-height:56px}
+  .narr .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 28%,transparent)}
+  .narr p{margin:0;font-size:.95rem;color:var(--ink);font-weight:500}
+
+  /* stage */
+  .stage{display:grid;grid-template-columns:320px 1fr;gap:22px;align-items:start}
+  @media(max-width:720px){.stage{grid-template-columns:1fr;gap:18px}}
+
+  /* phone */
+  .phone{background:var(--surface);border:1px solid var(--line);border-radius:30px;
+    padding:10px;box-shadow:0 18px 44px var(--shadow);max-width:360px;margin-inline:auto;width:100%}
+  .screen{border-radius:22px;overflow:hidden;background:var(--chat-bg);display:flex;flex-direction:column;height:520px}
+  .phead{background:var(--brand);color:#fff;display:flex;align-items:center;gap:10px;padding:12px 14px;flex:none}
+  .pav{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center;flex:none}
+  .phead .nm{font-weight:600;font-size:.97rem;line-height:1.15}
+  .phead .st{font-size:.72rem;opacity:.85}
+  .chat{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:9px;
+    background-image:radial-gradient(color-mix(in srgb,var(--sepia-b) 10%,transparent) 1px,transparent 1px);
+    background-size:16px 16px}
+  .pinput{flex:none;display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--surface);border-top:1px solid var(--line)}
+  .pinput .fld{flex:1;background:var(--chat-bg);border-radius:999px;padding:9px 14px;color:var(--ink-soft);font-size:.86rem;min-width:0}
+  .pinput .mic{width:34px;height:34px;border-radius:50%;background:var(--wa);display:grid;place-items:center;color:#fff;flex:none}
+
+  /* bubbles */
+  .msg{max-width:86%;padding:8px 11px;border-radius:14px;font-size:.9rem;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.06);word-wrap:break-word}
+  .msg.them{background:var(--bubble-in);border-top-left-radius:5px;margin-inline-end:auto}
+  .msg.me{background:var(--bubble-out);border-top-right-radius:5px;margin-inline-start:auto}
+  .msg.noa{background:var(--bubble-them);border-top-left-radius:5px;margin-inline-end:auto}
+  .who{font-size:.72rem;font-weight:700;color:var(--brand);margin-bottom:2px}
+  .msg.noa .who{color:var(--rose)}
+  .msg .tm{font-size:.63rem;color:var(--ink-faint);text-align:end;margin-top:3px}
+  .anim .msg.fresh{animation:pop .34s cubic-bezier(.2,.8,.3,1) both}
+  @keyframes pop{from{opacity:0;transform:translateY(7px) scale(.98)}to{opacity:1;transform:none}}
+
+  /* voice note */
+  .voice{display:flex;align-items:center;gap:9px}
+  .voice .pl{width:26px;height:26px;border-radius:50%;background:var(--wa);display:grid;place-items:center;color:#fff;flex:none}
+  .wave{flex:1;display:flex;align-items:center;gap:2px;height:22px;min-width:70px}
+  .wave i{flex:1;background:color-mix(in srgb,var(--wa) 55%,var(--ink-faint));border-radius:2px;opacity:.65}
+  .dur{font-size:.68rem;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+  .trans{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:.84rem;color:var(--ink-soft);font-style:italic}
+  .trans .lbl{display:inline-block;font-style:normal;font-size:.6rem;font-weight:700;letter-spacing:.5px;
+    text-transform:uppercase;color:var(--wa);background:color-mix(in srgb,var(--wa) 14%,transparent);
+    padding:1px 6px;border-radius:5px;margin-bottom:3px}
+
+  /* photo + clip */
+  .photo,.clip{margin-top:4px;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:4/3;background:#000;max-width:100%}
+  .photo svg,.clip svg{display:block;width:100%;height:100%}
+  .clip .ken{width:100%;height:100%;transform-origin:60% 40%}
+  .anim .clip.live .ken{animation:ken 13s ease-in-out infinite alternate}
+  @keyframes ken{from{transform:scale(1.02)}to{transform:scale(1.22) translate(-5%,4%)}}
+  .clip .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .clip .ovbtn{width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.42);backdrop-filter:blur(2px);display:grid;place-items:center;color:#fff}
+  .clip.live .ov{opacity:0;transition:opacity .4s}
+  .cap{position:absolute;inset-inline:0;bottom:0;padding:16px 10px 7px;font-size:.72rem;color:#fff;
+    background:linear-gradient(transparent,rgba(20,10,5,.78));line-height:1.3}
+  .clipmeta{position:absolute;top:7px;inset-inline-end:7px;font-size:.62rem;color:#fff;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:5px;font-variant-numeric:tabular-nums}
+
+  /* book */
+  .book{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 20px 22px;box-shadow:0 10px 30px var(--shadow);min-width:0}
+  .eyebrow{font-size:.68rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent)}
+  .book h2{margin:6px 0 2px;font-size:1.3rem;font-weight:700;text-wrap:balance}
+  .book .sub{color:var(--ink-soft);font-size:.86rem;margin-bottom:16px}
+  .chap{border-inline-start:3px solid var(--brand);padding-inline-start:13px;margin-bottom:4px}
+  .chap .ct{font-size:.72rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--brand);margin-bottom:6px}
+  .para{font-size:.98rem;line-height:1.62;color:var(--ink);max-width:62ch}
+  .ghost{color:var(--ink-faint);font-style:italic;font-size:.9rem}
+  .reveal{animation:fade .5s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .keepsake{display:flex;align-items:center;gap:11px;margin-top:15px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px}
+  .keepsake .th{width:54px;height:40px;border-radius:7px;overflow:hidden;flex:none;background:#000}
+  .keepsake .th svg{width:100%;height:100%;display:block}
+  .keepsake .kt{font-size:.8rem;font-weight:600}
+  .keepsake .ks{font-size:.7rem;color:var(--ink-soft)}
+  .note{margin-top:15px;background:color-mix(in srgb,var(--rose) 13%,var(--surface));
+    border:1px solid color-mix(in srgb,var(--rose) 32%,transparent);border-radius:12px;padding:12px 13px}
+  .note .nh{display:flex;align-items:center;gap:7px;font-size:.73rem;font-weight:700;color:var(--rose);margin-bottom:5px;letter-spacing:.3px;text-transform:uppercase}
+  .note p{margin:0;font-size:.9rem}
+  .note .plan{margin-top:8px;padding-top:8px;border-top:1px dashed color-mix(in srgb,var(--rose) 35%,transparent);font-weight:600;color:var(--ink)}
+
+  /* controls */
+  .ctrls{margin-top:22px}
+  .bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--accent));border-radius:999px;transition:width .4s ease}
+  .ctrlrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+  .slabel{font-size:.86rem;color:var(--ink-soft);flex:1;min-width:150px}
+  .slabel b{color:var(--ink);font-weight:600}
+  .btns{display:flex;gap:8px}
+  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:500;
+    font-size:.88rem;padding:9px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--brand)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{filter:brightness(1.07)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .foot{margin-top:20px;font-size:.76rem;color:var(--ink-faint);text-align:center}
+
+  svg.ic{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+</style>
+
+<div id="app">
+  <div class="head">
+    <div class="brand">
+      <div class="wordmark">
+        <span class="mk"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M12 7v13M12 7c0-2-1.5-3-4-3H4v13h4c2.5 0 4 1 4 3M12 7c0-2 1.5-3 4-3h4v13h-4c-2.5 0-4 1-4 3"/></svg></span>
+        <b id="brandName">Generational Memory</b>
+      </div>
+      <div class="tag" id="tagline"></div>
+    </div>
+    <div class="langs" role="group" aria-label="Language">
+      <button data-l="he" lang="he">עברית</button>
+      <button data-l="en" lang="en">English</button>
+      <button data-l="ru" lang="ru">Русский</button>
+    </div>
+  </div>
+
+  <div class="stories" id="stories" role="group" aria-label="Story"></div>
+
+  <div class="narr"><span class="dot"></span><p id="narr"></p></div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="screen">
+        <div class="phead">
+          <span class="pav" id="pav"></span>
+          <div><div class="nm" id="pname"></div><div class="st" id="pstatus"></div></div>
+        </div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="pinput"><div class="fld" id="pfield"></div>
+          <span class="mic"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="book">
+      <div class="eyebrow" id="bookEye"></div>
+      <h2 id="bookTitle"></h2>
+      <div class="sub" id="bookSub"></div>
+      <div id="bookBody"></div>
+    </div>
+  </div>
+
+  <div class="ctrls">
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="ctrlrow">
+      <div class="slabel" id="slabel"></div>
+      <div class="btns">
+        <button class="btn" id="back"></button>
+        <button class="btn" id="play"></button>
+        <button class="btn primary" id="next"></button>
+      </div>
+    </div>
+  </div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---- placeholder scenes (same across languages) ---- */
+  var PHOTO_KITCHEN = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><defs>'+
+    '<linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7d4ab"/><stop offset="1" stop-color="#c79a5f"/></linearGradient>'+
+    '<radialGradient id="gl" cx="32%" cy="34%" r="40%"><stop offset="0" stop-color="#fff3d6" stop-opacity=".95"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient></defs>'+
+    '<rect width="400" height="300" fill="url(#sk)"/>'+
+    '<rect x="34" y="34" width="132" height="120" rx="6" fill="#fdf1d6"/>'+
+    '<path d="M34 34h132v120H34z" fill="none" stroke="#7a5228" stroke-width="5"/>'+
+    '<path d="M100 34v120M34 94h132" stroke="#7a5228" stroke-width="4"/>'+
+    '<polygon points="60,150 150,60 250,150 250,210 60,210" fill="url(#gl)"/>'+
+    '<rect x="0" y="212" width="400" height="88" fill="#915c2c"/>'+
+    '<rect x="0" y="208" width="400" height="8" fill="#6f421d"/>'+
+    '<g stroke="#5c3b1c" stroke-width="3" fill="none" opacity=".55"><path d="M212 196c6-18 2-30-4-40"/><path d="M232 198c7-16 4-28-2-38"/></g>'+
+    '<g transform="translate(214,206)"><ellipse cx="0" cy="0" rx="58" ry="20" fill="#d79a45"/><ellipse cx="0" cy="-3" rx="58" ry="19" fill="#e8b45f"/>'+
+    '<g stroke="#a86a22" stroke-width="3" fill="none" opacity=".8"><path d="M-46-4c12 10 24 10 36 0M-28-8c12 10 24 10 36 0M-10-4c12 10 24 10 36 0"/></g></g>'+
+    '<ellipse cx="320" cy="205" rx="34" ry="12" fill="#c98f45"/><ellipse cx="320" cy="201" rx="34" ry="11" fill="#e4e0d2"/>'+
+    '</svg>';
+
+  var PHOTO_SEA = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><defs>'+
+    '<linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1ddb2"/><stop offset="1" stop-color="#e2b575"/></linearGradient>'+
+    '<radialGradient id="sun2" cx="74%" cy="38%" r="34%"><stop offset="0" stop-color="#fff0cf" stop-opacity=".95"/><stop offset="1" stop-color="#fff0cf" stop-opacity="0"/></radialGradient></defs>'+
+    '<rect width="400" height="300" fill="url(#sky2)"/>'+
+    '<circle cx="300" cy="115" r="86" fill="url(#sun2)"/>'+
+    '<rect x="0" y="150" width="400" height="58" fill="#c79256"/>'+
+    '<g stroke="#a9733a" stroke-width="2" fill="none" opacity=".5"><path d="M18 170h70M120 180h80M240 166h60M30 192h90M210 196h130"/></g>'+
+    '<rect x="0" y="206" width="400" height="94" fill="#9a6a34"/>'+
+    '<rect x="0" y="201" width="400" height="7" fill="#78511f"/>'+
+    '<path d="M0 199h400" stroke="#6f4a1c" stroke-width="4"/>'+
+    '<g stroke="#6f4a1c" stroke-width="3"><path d="M34 199v-15M104 199v-15M300 199v-15M360 199v-15"/></g>'+
+    '<path d="M46 199c-4-28-6-50-2-70" stroke="#5c3b16" stroke-width="6" fill="none"/>'+
+    '<g stroke="#5c3b16" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"><path d="M44 130c-16-6-30-4-42 4"/><path d="M44 130c-10-14-12-28-8-40"/><path d="M44 130c16-8 30-6 44 2"/><path d="M44 130c10-16 10-30 4-42"/></g>'+
+    '<g fill="#4a2f12"><circle cx="205" cy="150" r="13"/><path d="M188 168c0-10 8-16 17-16s17 6 17 16v32h-34z"/></g>'+
+    '<rect x="175" y="176" width="20" height="26" rx="2" fill="#3c2610"/><rect x="215" y="176" width="20" height="26" rx="2" fill="#3c2610"/>'+
+    '<g stroke="#caa15e" stroke-width="2"><path d="M197 178v23M201 178v23M205 178v23M209 178v23M213 178v23"/></g>'+
+    '</svg>';
+
+  var PLAYIC='<svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;fill:#fff;stroke:none"><path d="M7 5l12 7-12 7z"/></svg>';
+  var STEP_THREAD=['a','a','a','a','a','a','a','f','a']; // step 1..9
+
+  /* ---- shared interface strings (per language) ---- */
+  var DIR={he:'rtl',en:'ltr',ru:'ltr'};
+  var UI={
+    he:{brand:'זיכרון בין־דורי', asst:'שומר הזיכרונות', fam:'משפחה (3)', online:'מקליד…', field:'הודעה',
+      bookEye:'מזכרת חיה', bookTitle:'ספר החיים', trans:'תומלל', voice:'הודעה קולית', noteH:'מה זה החזיר',
+      step:'שלב', of:'מתוך', back:'הקודם', next:'הבא', play:'הפעלה אוטומטית', pause:'עצירה', restart:'מהתחלה',
+      foot:'אב־טיפוס · משפחה בדיונית, תמונות להמחשה. ללא נתונים אישיים אמיתיים.',
+      labels:['שאלת הבוקר','זיכרון עולה','שאלת המשך','תמונה מצטרפת','נשמר בספר','סרטון מזכרת','משותף למשפחה','המשפחה מגיבה','התגובה חוזרת'],
+      narr:[
+        'העוזר פותח בשאלת זיכרון חמה וממוקדת — לא „מה שלומך", אלא דלת לסיפור.',
+        'התשובה מגיעה בקול. היא מובנת בשפה של המספר ומתומללת — בלי מקלדת, בלי אפליקציה.',
+        'הוא מקשיב, משקף בחזרה ושואל שאלת המשך עדינה אחת.',
+        'מצטרפת תמונה אמיתית, בת עשרות שנים.',
+        'הזיכרון נכתב בתוך ספר החיים, כדי שלא יאבד.',
+        'נוצרת מזכרת מהתמונה של המספר עצמו — לא פנים שה־AI המציא.',
+        'היא משותפת, באופן פרטי, עם המשפחה.',
+        'נכד או נכדה מגיבים — ורוצים לקחת חלק.',
+        'התגובה חוזרת. זה הרגע שבו הכול מקבל משמעות.'
+      ]},
+    en:{brand:'Generational Memory', asst:'Memory Keeper', fam:'Family (3)', online:'typing…', field:'Message',
+      bookEye:'A living keepsake', bookTitle:'Book of Life', trans:'transcribed', voice:'Voice message', noteH:'What it brought back',
+      step:'Step', of:'of', back:'Back', next:'Next', play:'Auto-play', pause:'Pause', restart:'Restart',
+      foot:'Prototype · fictional family, placeholder photos. No real personal data.',
+      labels:['The morning question','A memory returns','A gentle follow-up','A photo appears','Saved to the Book','A keepsake clip','Shared with family','The family answers','It comes back'],
+      narr:[
+        'The assistant opens with a warm, specific memory prompt — not “how are you”, but a door into a story.',
+        'The answer comes by voice. It’s understood in their language and transcribed — no keyboard, no app.',
+        'It listens, reflects it back, and asks one gentle follow-up.',
+        'A real photo is added, decades old.',
+        'The memory is written into the Book of Life, so it won’t be lost.',
+        'A keepsake is made from their own photo — not AI-invented faces.',
+        'It’s shared, privately, with the family.',
+        'A grandchild answers — and wants to share in it.',
+        'The reaction comes back. This is the moment it all means something.'
+      ]},
+    ru:{brand:'Память поколений', asst:'Хранитель памяти', fam:'Семья (3)', online:'печатает…', field:'Сообщение',
+      bookEye:'Живая память', bookTitle:'Книга жизни', trans:'расшифровано', voice:'Голосовое сообщение', noteH:'Что это вернуло',
+      step:'Шаг', of:'из', back:'Назад', next:'Далее', play:'Авто', pause:'Пауза', restart:'Сначала',
+      foot:'Прототип · вымышленная семья, фото для примера. Без реальных личных данных.',
+      labels:['Утренний вопрос','Всплывает воспоминание','Мягкий вопрос','Появляется фото','Сохранено в Книгу','Ролик-память','Отправлено семье','Семья отвечает','Ответ возвращается'],
+      narr:[
+        'Ассистент начинает с тёплого, конкретного вопроса — не «как дела», а дверь в историю.',
+        'Ответ приходит голосом. Его понимают на родном языке и записывают — без клавиатуры и приложения.',
+        'Он слушает, отражает сказанное и задаёт один мягкий вопрос.',
+        'Добавляется настоящая фотография, которой десятки лет.',
+        'Воспоминание вписывается в Книгу жизни, чтобы не потерялось.',
+        'Из собственного фото создаётся память — без выдуманных ИИ лиц.',
+        'Им делятся, приватно, с семьёй.',
+        'Внук или внучка отвечает — и хочет быть частью этого.',
+        'Ответ возвращается. Это момент, когда всё обретает смысл.'
+      ]}
+  };
+
+  /* ---- story 1: Rivka ---- */
+  var STORY_RIVKA={
+    photo:PHOTO_KITCHEN,
+    sel:{he:'רבקה, 82',en:'Rivka, 82',ru:'Ривка, 82'},
+    selSub:{he:'חלה של יום שישי',en:'Friday challah',ru:'Пятничная хала'},
+    L:{
+      he:{tag:'התנסות משפחתית · בוקר אחד עם רבקה, בת 82', bookSub:'הסיפור של רבקה, נכתב תוך כדי סיפור',
+        chapter:'פרק · ילדות, צ׳רנוביץ', ghost:'נכתב כאן ברגעים אלה, תוך כדי שרבקה מספרת…',
+        para:'בבקרי שישי אמא שלי התחילה לאפות חלה בארבע. המטבח שלנו בצ׳רנוביץ התמלא בריח של בצק חם וקצת וניל. היא נתנה לי לקלוע חלה קטנה אחת — שלי תמיד יצאה עקומה, והיא תמיד אמרה שהיא הכי יפה.',
+        keepT:'מזכרת שישי', keepS:'0:45 · מהתמונה של רבקה',
+        note:'נועה, הנכדה, ראתה את הסיפור ורוצה ללמוד לקלוע חלה — מרבקה עצמה.',
+        plan:'עכשיו יש לרבקה סיבה, ויש לה יום שישי.',
+        clipCap:'המטבח של אמא של רבקה · בקרי שישי · צ׳רנוביץ, 1951'},
+      en:{tag:'A family user-test · one morning with Rivka, 82', bookSub:'Rivka’s story, written as she tells it',
+        chapter:'Chapter · Childhood, Chernivtsi', ghost:'Being written right now, as Rivka speaks…',
+        para:'On Friday mornings my mother began baking challah at four. Our kitchen in Chernivtsi filled with warm dough and a little vanilla. She let me braid one small loaf — mine always came out crooked, and she always said it was the most beautiful.',
+        keepT:'Friday keepsake', keepS:'0:45 · from Rivka’s photo',
+        note:'Noa, her granddaughter, saw the story and wants to learn the braid — from Rivka herself.',
+        plan:'Now Rivka has a reason, and a Friday.',
+        clipCap:'Rivka’s mother’s kitchen · Friday mornings · Chernivtsi, 1951'},
+      ru:{tag:'Семейный тест · одно утро с Ривкой, 82 года', bookSub:'История Ривки, записанная с её слов',
+        chapter:'Глава · Детство, Черновцы', ghost:'Записывается прямо сейчас, пока Ривка рассказывает…',
+        para:'По пятницам мама начинала печь халу в четыре утра. Наша кухня в Черновцах наполнялась запахом тёплого теста и ванили. Мне позволяли заплести одну маленькую халу — у меня она всегда выходила кривой, а мама говорила, что она самая красивая.',
+        keepT:'Пятничная память', keepS:'0:45 · из фото Ривки',
+        note:'Ноа, внучка, увидела историю и хочет научиться плести халу — у самой Ривки.',
+        plan:'Теперь у Ривки есть повод и есть пятница.',
+        clipCap:'Кухня мамы Ривки · утро пятницы · Черновцы, 1951'}
+    },
+    msgs:[
+      {th:'a',step:1,who:'them',tm:'12:42', t:{
+        he:'בוקר טוב, רבקה ☀️ חשבתי על ימי שישי. כשהיית ילדה קטנה — איך הריח המטבח של אמא שלך?',
+        en:'Good morning, Rivka ☀️ I’ve been thinking about Fridays. When you were a little girl — what did your mother’s kitchen smell like?',
+        ru:'Доброе утро, Ривка ☀️ Я думал о пятницах. Когда ты была маленькой — чем пахла мамина кухня?'}},
+      {th:'a',step:2,who:'me',tm:'12:44',voice:'0:42', t:{
+        he:'אה, שישי… אמא שלי אפתה חלה מארבע בבוקר. כל הבית הריח מבצק חם וקצת וניל. לי הרשו לקלוע חלה קטנה אחת. שלי תמיד יצאה עקומה — והיא תמיד אמרה שהיא הכי יפה.',
+        en:'Ah, Friday… My mother baked challah from four in the morning. The whole house smelled of warm dough and a little vanilla. I was allowed to braid one small challah. Mine always came out crooked — and she always said it was the most beautiful one.',
+        ru:'Ах, пятница… Мама пекла халу с четырёх утра. Весь дом пах тёплым тестом и ванилью. Мне разрешали заплести одну маленькую халу. У меня она всегда выходила кривой — а мама всегда говорила, что она самая красивая.'}},
+      {th:'a',step:3,who:'them',tm:'12:46', t:{
+        he:'חלה עקומה, הכי יפה. אני כמעט מריח את זה 🤍 היא לימדה אותך לקלוע — או שלמדת מלהסתכל על הידיים שלה?',
+        en:'A crooked challah, the most beautiful one. I can almost smell it 🤍 Did she teach you the braid — or did you learn by watching her hands?',
+        ru:'Кривая хала, самая красивая. Я почти чувствую запах 🤍 Она учила тебя плести — или ты научилась, глядя на её руки?'}},
+      {th:'a',step:4,who:'me',tm:'12:47',voice:'0:28',photo:true, t:{
+        he:'מלהסתכל. היא אף פעם לא הסבירה — מעל, מתחת, מעל… הנה, מצאתי תמונה. זה המטבח שלה, 1951.',
+        en:'By watching. She never explained — over, under, over… Here, I found a photo. This is her kitchen, 1951.',
+        ru:'Глядя. Она никогда не объясняла — сверху, снизу, сверху… Вот, я нашла фото. Это её кухня, 1951 год.'}},
+      {th:'a',step:5,who:'them',tm:'12:49', t:{
+        he:'כתבתי את זה בספר החיים שלך 📖 — בפרק הילדות, כדי שלא יאבד.',
+        en:'I’ve written this into your Book of Life 📖 — in the Childhood chapter, so it won’t be lost.',
+        ru:'Я записал это в твою Книгу жизни 📖 — в главу «Детство», чтобы не потерялось.'}},
+      {th:'a',step:6,who:'them',tm:'12:49',clip:true, t:{
+        he:'והכנתי מזכרת קטנה מהתמונה שלך. רוצה לראות?',
+        en:'And I made a little keepsake from your photo. Would you like to see it?',
+        ru:'И я сделал маленький ролик из твоей фотографии. Хочешь посмотреть?'}},
+      {th:'a',step:7,who:'them',tm:'12:50', t:{
+        he:'שיתפתי אותו עם המשפחה שלך 💛', en:'I’ve shared it with your family 💛', ru:'Я поделился им с твоей семьёй 💛'}},
+      {th:'f',step:7,who:'them',tm:'12:50',clip:true,shared:true, t:{
+        he:'מזכרת חדשה מרבקה', en:'A new keepsake from Rivka', ru:'Новая память от Ривки'}},
+      {th:'f',step:8,who:'noa',name:{he:'נועה',en:'Noa',ru:'Ноа'},tm:'12:58', t:{
+        he:'סבתא… לא ידעתי את זה בכלל. אני בוכה 😭❤️ תלמדי גם אותי לקלוע?',
+        en:'Savta… I never knew this. I’m crying 😭❤️ Can you teach ME the braid?',
+        ru:'Бабушка… я совсем этого не знала. Я плачу 😭❤️ Научишь и меня плести?'}},
+      {th:'a',step:9,who:'them',tm:'13:01', t:{
+        he:'נועה ראתה את הסיפור שלך. היא כתבה: „לא ידעתי את זה — תלמדי אותי לקלוע?" היא רוצה ללמוד ממך.',
+        en:'Noa saw your story. She wrote: “I never knew this — can you teach me the braid?” She wants to learn it from you.',
+        ru:'Ноа увидела твою историю. Она написала: «Я этого не знала — научишь меня плести?» Она хочет научиться у тебя.'}},
+      {th:'a',step:9,who:'me',tm:'13:02', t:{
+        he:'תגיד לה שישי. שתבוא ביום שישי. 🤍', en:'Tell her Friday. Tell her to come on Friday. 🤍', ru:'Скажи ей — в пятницу. Пусть приходит в пятницу. 🤍'}}
+    ]
+  };
+
+  /* ---- story 2: Yosef ---- */
+  var STORY_YOSEF={
+    photo:PHOTO_SEA,
+    sel:{he:'יוסף, 86',en:'Yosef, 86',ru:'Йосеф, 86'},
+    selSub:{he:'טנגו על הטיילת',en:'Tango on the promenade',ru:'Танго на набережной'},
+    L:{
+      he:{tag:'התנסות משפחתית · בוקר אחד עם יוסף, בן 86', bookSub:'הסיפור של יוסף, נכתב תוך כדי סיפור',
+        chapter:'פרק · נעורים, תל אביב', ghost:'נכתב כאן ברגעים אלה, תוך כדי שיוסף מספר…',
+        para:'בקיץ 1958 ניגנתי באקורדיון על טיילת תל אביב עם שני חברים, בשביל כמה לירות. בחורה בשמלה כחולה ביקשה טנגו — דבורה. הידיים שלי רעדו וניגנתי רע, והיא נשארה בכל זאת. היינו יחד חמישים ואחת שנים.',
+        keepT:'הטיילת, 1958', keepS:'0:52 · מהתמונה של יוסף',
+        note:'דניאל, הנכד, לומד את הטנגו בגיטרה ורוצה לנגן אותו יחד — עם יוסף.',
+        plan:'עכשיו יש ליוסף סיבה, ויש לו יום שבת.',
+        clipCap:'יוסף על הטיילת · אקורדיון, אותו קיץ · תל אביב, 1958'},
+      en:{tag:'A family user-test · one morning with Yosef, 86', bookSub:'Yosef’s story, written as he tells it',
+        chapter:'Chapter · Youth, Tel Aviv', ghost:'Being written right now, as Yosef speaks…',
+        para:'In the summer of 1958 I played accordion on the Tel Aviv promenade with two friends, for a few lira. A girl in a blue dress asked for a tango — Dvora. My hands shook and I played it badly, and she stayed anyway. We were together fifty-one years.',
+        keepT:'Promenade, 1958', keepS:'0:52 · from Yosef’s photo',
+        note:'Daniel, his grandson, is learning the tango on guitar and wants to play it together — with Yosef.',
+        plan:'Now Yosef has a reason, and a Saturday.',
+        clipCap:'Yosef on the promenade · accordion, that summer · Tel Aviv, 1958'},
+      ru:{tag:'Семейный тест · одно утро с Йосефом, 86 лет', bookSub:'История Йосефа, записанная с его слов',
+        chapter:'Глава · Молодость, Тель-Авив', ghost:'Записывается прямо сейчас, пока Йосеф рассказывает…',
+        para:'Летом 1958 года я играл на аккордеоне на набережной Тель-Авива с двумя друзьями, за несколько лир. Девушка в синем платье попросила танго — Двора. Руки у меня дрожали, я играл плохо, а она всё равно осталась. Мы прожили вместе пятьдесят один год.',
+        keepT:'Набережная, 1958', keepS:'0:52 · из фото Йосефа',
+        note:'Даниэль, внук, учит танго на гитаре и хочет сыграть его вместе — с Йосефом.',
+        plan:'Теперь у Йосефа есть повод и есть суббота.',
+        clipCap:'Йосеф на набережной · аккордеон, то лето · Тель-Авив, 1958'}
+    },
+    msgs:[
+      {th:'a',step:1,who:'them',tm:'08:12', t:{
+        he:'בוקר טוב, יוסף ☀️ אני חושב על ערבי ריקודים. כשהיית צעיר — היה לילה אחד עם מוזיקה שלא שכחת?',
+        en:'Good morning, Yosef ☀️ I’ve been thinking about dance evenings. When you were young — was there one night of music you never forgot?',
+        ru:'Доброе утро, Йосеф ☀️ Я думаю о танцевальных вечерах. Когда ты был молод — был ли вечер с музыкой, который ты не забыл?'}},
+      {th:'a',step:2,who:'me',tm:'08:15',voice:'0:51', t:{
+        he:'הו, היה לילה. על טיילת תל אביב, קיץ 1958. ניגנתי אקורדיון עם שני חברים בשביל כמה לירות. בחורה בשמלה כחולה ביקשה טנגו — דבורה. הידיים שלי רעדו כל כך שניגנתי נורא. היא נשארה בכל זאת. חמישים ואחת שנים היינו יחד.',
+        en:'Oh, there was a night. On the Tel Aviv promenade, summer of 1958. I played accordion with two friends for a few lira. A girl in a blue dress asked for a tango — Dvora. My hands shook so badly I played it terribly. She stayed anyway. Fifty-one years we were together.',
+        ru:'О, был один вечер. На набережной Тель-Авива, лето 1958 года. Я играл на аккордеоне с двумя друзьями за несколько лир. Девушка в синем платье попросила танго — Двора. Руки у меня так дрожали, что я играл ужасно. Она всё равно осталась. Пятьдесят один год мы были вместе.'}},
+      {th:'a',step:3,who:'them',tm:'08:17', t:{
+        he:'שמלה כחולה וטנגו עם ידיים רועדות 🤍 אתה זוכר איך קראו לשיר?',
+        en:'A blue dress and a tango with shaking hands 🤍 Do you remember the name of the song?',
+        ru:'Синее платье и танго дрожащими руками 🤍 Ты помнишь, как называлась та песня?'}},
+      {th:'a',step:4,who:'me',tm:'08:19',voice:'0:33',photo:true, t:{
+        he:'טנגו רוסי — „утомлённое солнце". הנה, מצאתי תמונה. זה אני עם האקורדיון, אותו קיץ. תראה כמה רזה הייתי.',
+        en:'A Russian tango — “Utomlyonnoe solntse”. Here, I found a photo. This is me with the accordion, that same summer. Look how thin I was.',
+        ru:'Русское танго — «Утомлённое солнце». Вот, я нашёл фото. Это я с аккордеоном, в то лето. Смотри, какой я был худой.'}},
+      {th:'a',step:5,who:'them',tm:'08:20', t:{
+        he:'כתבתי את זה בספר החיים שלך 📖 — בפרק הנעורים, כדי שלא יאבד.',
+        en:'I’ve written this into your Book of Life 📖 — in the Youth chapter, so it won’t be lost.',
+        ru:'Я записал это в твою Книгу жизни 📖 — в главу «Молодость», чтобы не потерялось.'}},
+      {th:'a',step:6,who:'them',tm:'08:21',clip:true, t:{
+        he:'והכנתי מזכרת קטנה מהתמונה שלך. רוצה לראות?',
+        en:'And I made a little keepsake from your photo. Would you like to see it?',
+        ru:'И я сделал маленький ролик из твоей фотографии. Хочешь посмотреть?'}},
+      {th:'a',step:7,who:'them',tm:'08:22', t:{
+        he:'שיתפתי אותו עם המשפחה שלך 💛', en:'I’ve shared it with your family 💛', ru:'Я поделился им с твоей семьёй 💛'}},
+      {th:'f',step:7,who:'them',tm:'08:22',clip:true,shared:true, t:{
+        he:'מזכרת חדשה מיוסף', en:'A new keepsake from Yosef', ru:'Новая память от Йосефа'}},
+      {th:'f',step:8,who:'noa',name:{he:'דניאל',en:'Daniel',ru:'Даниэль'},tm:'08:40', t:{
+        he:'סבא! אני לומד את זה עכשיו בגיטרה 🎸 תלמד אותי את הטנגו? אני רוצה שננגן אותו יחד.',
+        en:'Saba! I’m learning this on guitar right now 🎸 Will you teach me the tango? I want us to play it together.',
+        ru:'Деда! Я как раз учу это на гитаре 🎸 Научишь меня танго? Хочу, чтобы мы сыграли его вместе.'}},
+      {th:'a',step:9,who:'them',tm:'08:52', t:{
+        he:'דניאל ראה את הסיפור שלך. הוא כתב: „אני לומד את זה בגיטרה — תלמד אותי את הטנגו, שננגן יחד?" הוא רוצה ללמוד ממך.',
+        en:'Daniel saw your story. He wrote: “I’m learning it on guitar — will you teach me the tango, so we can play together?” He wants to learn it from you.',
+        ru:'Даниэль увидел твою историю. Он написал: «Я учу это на гитаре — научишь меня танго, чтобы сыграть вместе?» Он хочет научиться у тебя.'}},
+      {th:'a',step:9,who:'me',tm:'08:54', t:{
+        he:'שיביא את הגיטרה בשבת. אני עדיין זוכר כל תו. 🤍',
+        en:'Tell him to bring the guitar on Saturday. I still remember every note. 🤍',
+        ru:'Пусть принесёт гитару в субботу. Я всё ещё помню каждую ноту. 🤍'}}
+    ]
+  };
+
+  var STORIES=[STORY_RIVKA,STORY_YOSEF];
+
+  /* ---- state ---- */
+  var TOTAL=9, cur=1, lang='he', si=0, playing=false, timer=null;
+  var app=document.getElementById('app');
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function story(){return STORIES[si]}
+
+  function waveBars(n){var h=[6,12,18,10,22,14,8,16,20,11,15,9,19,13,7,17,10,21,12,8];var o='';for(var i=0;i<n;i++){o+='<i style="height:'+h[i%h.length]+'px"></i>'}return o}
+
+  function clipHtml(live,cap,meta){
+    return '<div class="clip'+(live?' live':'')+'">'+
+      '<div class="ken">'+story().photo+'</div>'+
+      '<span class="clipmeta">'+(meta||'0:45')+'</span>'+
+      '<div class="ov"><span class="ovbtn">'+PLAYIC+'</span></div>'+
+      (cap?'<div class="cap">'+esc(cap)+'</div>':'')+'</div>';
+  }
+
+  function msgHtml(m,fresh){
+    var u=UI[lang], LS=story().L[lang];
+    var cls='msg '+(m.who==='me'?'me':m.who==='noa'?'noa':'them')+(fresh?' fresh':'');
+    var h='<div class="'+cls+'">';
+    if(m.who==='noa') h+='<div class="who">'+esc(m.name[lang])+'</div>';
+    if(m.shared){
+      h+='<div class="who">'+esc(u.asst)+'</div>'+clipHtml(cur>=8&&STEP_THREAD[cur-1]==='f', LS.clipCap, LS.keepS.split(' ')[0]);
+      h+='<div style="font-size:.85rem;margin-top:5px">'+esc(m.t[lang])+'</div>';
+      h+='<div class="tm">'+m.tm+'</div></div>';return h;
+    }
+    if(m.voice){
+      h+='<div class="voice"><span class="pl">'+PLAYIC+'</span><span class="wave">'+waveBars(16)+'</span><span class="dur">'+m.voice+'</span></div>';
+      h+='<div class="trans"><span class="lbl">'+esc(u.trans)+'</span>'+esc(m.t[lang])+'</div>';
+    } else {
+      h+=esc(m.t[lang]);
+    }
+    if(m.photo) h+='<div class="photo">'+story().photo+'</div>';
+    if(m.clip) h+=clipHtml(cur===6&&STEP_THREAD[cur-1]==='a', LS.clipCap, LS.keepS.split(' ')[0]);
+    h+='<div class="tm">'+m.tm+'</div></div>';
+    return h;
+  }
+
+  function renderChat(){
+    var u=UI[lang], thread=STEP_THREAD[cur-1];
+    var vis=story().msgs.filter(function(m){return m.th===thread && m.step<=cur});
+    var out='';
+    for(var i=0;i<vis.length;i++){out+=msgHtml(vis[i], vis[i].step===cur)}
+    var c=$('chat'); c.innerHTML=out; c.scrollTop=c.scrollHeight;
+    $('pname').textContent = thread==='f'? u.fam : u.asst;
+    $('pstatus').textContent = thread==='f'? '' : u.online;
+    $('pav').innerHTML = thread==='f'
+      ? '<svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M4 19c0-3 2.5-5 5-5s5 2 5 5M14.5 19c.3-2 1.8-3.3 3.5-3.3S21 17 21 19"/></svg>'
+      : '<svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 7v13M8 4H5v13h3.5M12 7c0-2-1.4-3-3.5-3M16 4h3v13h-3.5M12 7c0-2 1.4-3 3.5-3"/></svg>';
+  }
+
+  function renderBook(){
+    var u=UI[lang], LS=story().L[lang], h='';
+    h+='<div class="chap"><div class="ct">'+esc(LS.chapter)+'</div>';
+    if(cur>=5){ h+='<p class="para reveal">'+esc(LS.para)+'</p>'; }
+    else { h+='<p class="ghost">'+esc(LS.ghost)+'</p>'; }
+    h+='</div>';
+    if(cur>=6){
+      h+='<div class="keepsake reveal"><span class="th">'+story().photo+'</span><div><div class="kt">'+esc(LS.keepT)+'</div><div class="ks">'+esc(LS.keepS)+'</div></div></div>';
+    }
+    if(cur>=8){
+      h+='<div class="note reveal"><div class="nh"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor"><path d="M12 21s-7-4.3-9.5-8.5C1 9 3 5.5 6.5 5.5c2 0 3.2 1.1 3.5 2 .3-.9 1.5-2 3.5-2C19 5.5 23 9 21.5 12.5 19 16.7 12 21 12 21z"/></svg>'+esc(u.noteH)+'</div>';
+      h+='<p>'+esc(LS.note)+'</p>';
+      if(cur>=9) h+='<p class="plan">'+esc(LS.plan)+'</p>';
+      h+='</div>';
+    }
+    $('bookBody').innerHTML=h;
+  }
+
+  function renderStories(){
+    var out='';
+    for(var i=0;i<STORIES.length;i++){
+      out+='<button data-s="'+i+'" aria-pressed="'+(i===si)+'"><b>'+esc(STORIES[i].sel[lang])+'</b><span>'+esc(STORIES[i].selSub[lang])+'</span></button>';
+    }
+    $('stories').innerHTML=out;
+    document.querySelectorAll('#stories button').forEach(function(b){
+      b.addEventListener('click',function(){ var n=+b.dataset.s; if(n===si)return; stopPlay(); si=n; cur=1; render(); });
+    });
+  }
+
+  function render(){
+    var u=UI[lang], LS=story().L[lang];
+    app.dir=DIR[lang];
+    $('brandName').textContent=u.brand;
+    $('tagline').textContent=LS.tag;
+    $('bookEye').textContent=u.bookEye;
+    $('bookTitle').textContent=u.bookTitle;
+    $('bookSub').textContent=LS.bookSub;
+    $('pfield').textContent=u.field;
+    $('foot').textContent=u.foot;
+    $('narr').textContent=u.narr[cur-1];
+    $('fill').style.width=(cur/TOTAL*100)+'%';
+    $('slabel').innerHTML='<b>'+u.step+' '+cur+' '+u.of+' '+TOTAL+'</b> · '+esc(u.labels[cur-1]);
+    $('back').textContent=u.back; $('back').disabled=cur===1;
+    $('next').textContent = cur===TOTAL? u.restart : u.next;
+    $('play').textContent = playing? u.pause : u.play;
+    renderStories(); renderChat(); renderBook();
+    document.querySelectorAll('.langs button').forEach(function(b){b.setAttribute('aria-pressed', b.dataset.l===lang)});
+  }
+
+  function go(n){ cur=Math.max(1,Math.min(TOTAL,n)); render(); }
+  function stopPlay(){ playing=false; if(timer){clearInterval(timer);timer=null} $('play').textContent=UI[lang].play; }
+  function startPlay(){
+    if(cur===TOTAL) cur=1;
+    playing=true; $('play').textContent=UI[lang].pause; render();
+    timer=setInterval(function(){ if(cur>=TOTAL){stopPlay();return} cur++; render(); }, 4200);
+  }
+
+  $('next').addEventListener('click',function(){ stopPlay(); if(cur===TOTAL){go(1)}else{go(cur+1)} });
+  $('back').addEventListener('click',function(){ stopPlay(); go(cur-1); });
+  $('play').addEventListener('click',function(){ if(playing){stopPlay()}else{startPlay()} });
+  document.querySelectorAll('.langs button').forEach(function(b){
+    b.addEventListener('click',function(){ lang=b.dataset.l; render(); });
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+      var fwd=(e.key==='ArrowRight'); if(DIR[lang]==='rtl') fwd=!fwd;
+      stopPlay(); go(cur+(fwd?1:-1));
+    }
+  });
+
+  app.classList.add('anim');
+  render();
+})();
+</script>
