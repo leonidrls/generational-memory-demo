@@ -259,6 +259,14 @@
     '<g stroke="#caa15e" stroke-width="2"><path d="M197 178v23M201 178v23M205 178v23M209 178v23M213 178v23"/></g>'+
     '</svg>';
 
+  var PHOTO_PORTRAIT = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><defs>'+
+    '<radialGradient id="pv" cx="50%" cy="40%" r="64%"><stop offset="0" stop-color="#f0ddb6"/><stop offset="1" stop-color="#b2854a"/></radialGradient></defs>'+
+    '<rect width="400" height="300" fill="url(#pv)"/>'+
+    '<g fill="#5c3b1c"><circle cx="150" cy="126" r="36"/><path d="M94 236c0-36 25-58 56-58s56 22 56 58z"/>'+
+    '<circle cx="258" cy="118" r="31"/><path d="M212 236c0-31 21-52 46-52s46 21 46 52z"/></g>'+
+    '<rect x="13" y="13" width="374" height="274" rx="8" fill="none" stroke="#fff6e4" stroke-width="5" opacity=".45"/>'+
+    '</svg>';
+
   var PLAYIC='<svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;fill:#fff;stroke:none"><path d="M7 5l12 7-12 7z"/></svg>';
   var STEP_THREAD=['a','a','a','a','a','a','a','f','a']; // step 1..9
 
@@ -266,7 +274,7 @@
   var DIR={he:'rtl',en:'ltr',ru:'ltr'};
   var UI={
     he:{brand:'זיכרון בין־דורי', asst:'שומר הזיכרונות', fam:'משפחה (3)', online:'מקליד…', field:'הודעה',
-      bookEye:'מזכרת חיה', bookTitle:'ספר החיים', trans:'תומלל', voice:'הודעה קולית', noteH:'מה זה החזיר',
+      bookEye:'מזכרת חיה', bookTitle:'ספר החיים', trans:'תומלל', voice:'הודעה קולית', noteH:'מה זה החזיר', famTitle:'תמונה מהמשפחה',
       step:'שלב', of:'מתוך', back:'הקודם', next:'הבא', play:'הפעלה אוטומטית', pause:'עצירה', restart:'מהתחלה',
       foot:'אב־טיפוס · משפחה בדיונית, תמונות להמחשה. ללא נתונים אישיים אמיתיים.',
       labels:['שאלת הבוקר','זיכרון עולה','שאלת המשך','תמונה מצטרפת','נשמר בספר','סרטון מזכרת','משותף למשפחה','המשפחה מגיבה','התגובה חוזרת'],
@@ -278,11 +286,11 @@
         'הזיכרון נכתב בתוך ספר החיים, כדי שלא יאבד.',
         'נוצרת מזכרת מהתמונה של המספר עצמו — לא פנים שה־AI המציא.',
         'היא משותפת, באופן פרטי, עם המשפחה.',
-        'נכד או נכדה מגיבים — ורוצים לקחת חלק.',
+        'נכד או נכדה מגיבים — ושולחים בחזרה תמונה משלהם, שמצטרפת לספר.',
         'התגובה חוזרת. זה הרגע שבו הכול מקבל משמעות.'
       ]},
     en:{brand:'Generational Memory', asst:'Memory Keeper', fam:'Family (3)', online:'typing…', field:'Message',
-      bookEye:'A living keepsake', bookTitle:'Book of Life', trans:'transcribed', voice:'Voice message', noteH:'What it brought back',
+      bookEye:'A living keepsake', bookTitle:'Book of Life', trans:'transcribed', voice:'Voice message', noteH:'What it brought back', famTitle:'A photo from the family',
       step:'Step', of:'of', back:'Back', next:'Next', play:'Auto-play', pause:'Pause', restart:'Restart',
       foot:'Prototype · fictional family, placeholder photos. No real personal data.',
       labels:['The morning question','A memory returns','A gentle follow-up','A photo appears','Saved to the Book','A keepsake clip','Shared with family','The family answers','It comes back'],
@@ -294,11 +302,11 @@
         'The memory is written into the Book of Life, so it won’t be lost.',
         'A keepsake is made from their own photo — not AI-invented faces.',
         'It’s shared, privately, with the family.',
-        'A grandchild answers — and wants to share in it.',
+        'A grandchild answers — and sends back a photo of their own, which joins the book.',
         'The reaction comes back. This is the moment it all means something.'
       ]},
     ru:{brand:'Память поколений', asst:'Хранитель памяти', fam:'Семья (3)', online:'печатает…', field:'Сообщение',
-      bookEye:'Живая память', bookTitle:'Книга жизни', trans:'расшифровано', voice:'Голосовое сообщение', noteH:'Что это вернуло',
+      bookEye:'Живая память', bookTitle:'Книга жизни', trans:'расшифровано', voice:'Голосовое сообщение', noteH:'Что это вернуло', famTitle:'Фото от семьи',
       step:'Шаг', of:'из', back:'Назад', next:'Далее', play:'Авто', pause:'Пауза', restart:'Сначала',
       foot:'Прототип · вымышленная семья, фото для примера. Без реальных личных данных.',
       labels:['Утренний вопрос','Всплывает воспоминание','Мягкий вопрос','Появляется фото','Сохранено в Книгу','Ролик-память','Отправлено семье','Семья отвечает','Ответ возвращается'],
@@ -310,7 +318,7 @@
         'Воспоминание вписывается в Книгу жизни, чтобы не потерялось.',
         'Из собственного фото создаётся память — без выдуманных ИИ лиц.',
         'Им делятся, приватно, с семьёй.',
-        'Внук или внучка отвечает — и хочет быть частью этого.',
+        'Внук или внучка отвечает — и присылает своё фото, которое входит в книгу.',
         'Ответ возвращается. Это момент, когда всё обретает смысл.'
       ]}
   };
@@ -320,6 +328,7 @@
     photo:PHOTO_KITCHEN,
     sel:{he:'רבקה, 82',en:'Rivka, 82',ru:'Ривка, 82'},
     selSub:{he:'חלה של יום שישי',en:'Friday challah',ru:'Пятничная хала'},
+    grand:{he:'נועה',en:'Noa',ru:'Ноа'},
     L:{
       he:{tag:'התנסות משפחתית · בוקר אחד עם רבקה, בת 82', bookSub:'הסיפור של רבקה, נכתב תוך כדי סיפור',
         chapter:'פרק · ילדות, צ׳רנוביץ', ghost:'נכתב כאן ברגעים אלה, תוך כדי שרבקה מספרת…',
@@ -372,14 +381,14 @@
         he:'שיתפתי אותו עם המשפחה שלך 💛', en:'I’ve shared it with your family 💛', ru:'Я поделился им с твоей семьёй 💛'}},
       {th:'f',step:7,who:'them',tm:'12:50',clip:true,shared:true, t:{
         he:'מזכרת חדשה מרבקה', en:'A new keepsake from Rivka', ru:'Новая память от Ривки'}},
-      {th:'f',step:8,who:'noa',name:{he:'נועה',en:'Noa',ru:'Ноа'},tm:'12:58', t:{
-        he:'סבתא… לא ידעתי את זה בכלל. אני בוכה 😭❤️ תלמדי גם אותי לקלוע?',
-        en:'Savta… I never knew this. I’m crying 😭❤️ Can you teach ME the braid?',
-        ru:'Бабушка… я совсем этого не знала. Я плачу 😭❤️ Научишь и меня плести?'}},
+      {th:'f',step:8,who:'noa',name:{he:'נועה',en:'Noa',ru:'Ноа'},tm:'12:58',photo:true,famphoto:true, t:{
+        he:'סבתא… לא ידעתי את זה בכלל 😭❤️ תלמדי גם אותי לקלוע? ומצאתי תמונה ישנה שלך ושל סבתא־רבתא — הוספתי לספר שלך.',
+        en:'Savta… I never knew this 😭❤️ Can you teach ME the braid? And I found an old photo of you and great-grandma — I’m adding it to your book.',
+        ru:'Бабушка… я совсем этого не знала 😭❤️ Научишь и меня плести? И я нашла старое фото тебя и прабабушки — добавляю его в твою книгу.'}},
       {th:'a',step:9,who:'them',tm:'13:01', t:{
-        he:'נועה ראתה את הסיפור שלך. היא כתבה: „לא ידעתי את זה — תלמדי אותי לקלוע?" היא רוצה ללמוד ממך.',
-        en:'Noa saw your story. She wrote: “I never knew this — can you teach me the braid?” She wants to learn it from you.',
-        ru:'Ноа увидела твою историю. Она написала: «Я этого не знала — научишь меня плести?» Она хочет научиться у тебя.'}},
+        he:'נועה ראתה את הסיפור שלך והוסיפה תמונה שלך ושל אמא שלך לספר. היא כתבה: „תלמדי אותי לקלוע?" היא רוצה ללמוד ממך.',
+        en:'Noa saw your story and added a photo of you and your mother to the book. She wrote: “can you teach me the braid?” She wants to learn it from you.',
+        ru:'Ноа увидела твою историю и добавила в книгу фото тебя и твоей мамы. Она написала: «научишь меня плести?» Она хочет научиться у тебя.'}},
       {th:'a',step:9,who:'me',tm:'13:02', t:{
         he:'תגיד לה שישי. שתבוא ביום שישי. 🤍', en:'Tell her Friday. Tell her to come on Friday. 🤍', ru:'Скажи ей — в пятницу. Пусть приходит в пятницу. 🤍'}}
     ]
@@ -390,6 +399,7 @@
     photo:PHOTO_SEA,
     sel:{he:'יוסף, 86',en:'Yosef, 86',ru:'Йосеф, 86'},
     selSub:{he:'טנגו על הטיילת',en:'Tango on the promenade',ru:'Танго на набережной'},
+    grand:{he:'דניאל',en:'Daniel',ru:'Даниэль'},
     L:{
       he:{tag:'התנסות משפחתית · בוקר אחד עם יוסף, בן 86', bookSub:'הסיפור של יוסף, נכתב תוך כדי סיפור',
         chapter:'פרק · נעורים, תל אביב', ghost:'נכתב כאן ברגעים אלה, תוך כדי שיוסף מספר…',
@@ -442,14 +452,14 @@
         he:'שיתפתי אותו עם המשפחה שלך 💛', en:'I’ve shared it with your family 💛', ru:'Я поделился им с твоей семьёй 💛'}},
       {th:'f',step:7,who:'them',tm:'08:22',clip:true,shared:true, t:{
         he:'מזכרת חדשה מיוסף', en:'A new keepsake from Yosef', ru:'Новая память от Йосефа'}},
-      {th:'f',step:8,who:'noa',name:{he:'דניאל',en:'Daniel',ru:'Даниэль'},tm:'08:40', t:{
-        he:'סבא! אני לומד את זה עכשיו בגיטרה 🎸 תלמד אותי את הטנגו? אני רוצה שננגן אותו יחד.',
-        en:'Saba! I’m learning this on guitar right now 🎸 Will you teach me the tango? I want us to play it together.',
-        ru:'Деда! Я как раз учу это на гитаре 🎸 Научишь меня танго? Хочу, чтобы мы сыграли его вместе.'}},
+      {th:'f',step:8,who:'noa',name:{he:'דניאל',en:'Daniel',ru:'Даниэль'},tm:'08:40',photo:true,famphoto:true, t:{
+        he:'סבא! אני לומד את זה עכשיו בגיטרה 🎸 תלמד אותי את הטנגו? ומצאנו תמונה שלך ושל סבתא דבורה על החוף — הוספתי לספר שלך.',
+        en:'Saba! I’m learning this on guitar right now 🎸 Will you teach me the tango? And we found a photo of you and Savta Dvora on the beach — I’m adding it to your book.',
+        ru:'Деда! Я как раз учу это на гитаре 🎸 Научишь меня танго? И мы нашли фото тебя и бабушки Дворы на пляже — добавляю его в твою книгу.'}},
       {th:'a',step:9,who:'them',tm:'08:52', t:{
-        he:'דניאל ראה את הסיפור שלך. הוא כתב: „אני לומד את זה בגיטרה — תלמד אותי את הטנגו, שננגן יחד?" הוא רוצה ללמוד ממך.',
-        en:'Daniel saw your story. He wrote: “I’m learning it on guitar — will you teach me the tango, so we can play together?” He wants to learn it from you.',
-        ru:'Даниэль увидел твою историю. Он написал: «Я учу это на гитаре — научишь меня танго, чтобы сыграть вместе?» Он хочет научиться у тебя.'}},
+        he:'דניאל ראה את הסיפור שלך והוסיף תמונה שלך ושל דבורה לספר. הוא כתב: „תלמד אותי את הטנגו, שננגן יחד?" הוא רוצה ללמוד ממך.',
+        en:'Daniel saw your story and added a photo of you and Dvora to the book. He wrote: “will you teach me the tango, so we can play together?” He wants to learn it from you.',
+        ru:'Даниэль увидел твою историю и добавил в книгу фото тебя и Дворы. Он написал: «научишь меня танго, чтобы сыграть вместе?» Он хочет научиться у тебя.'}},
       {th:'a',step:9,who:'me',tm:'08:54', t:{
         he:'שיביא את הגיטרה בשבת. אני עדיין זוכר כל תו. 🤍',
         en:'Tell him to bring the guitar on Saturday. I still remember every note. 🤍',
@@ -492,7 +502,7 @@
     } else {
       h+=esc(m.t[lang]);
     }
-    if(m.photo) h+='<div class="photo">'+story().photo+'</div>';
+    if(m.photo) h+='<div class="photo">'+(m.famphoto?PHOTO_PORTRAIT:story().photo)+'</div>';
     if(m.clip) h+=clipHtml(cur===6&&STEP_THREAD[cur-1]==='a', LS.clipCap, LS.keepS.split(' ')[0]);
     h+='<div class="tm">'+m.tm+'</div></div>';
     return h;
@@ -519,6 +529,9 @@
     h+='</div>';
     if(cur>=6){
       h+='<div class="keepsake reveal"><span class="th">'+story().photo+'</span><div><div class="kt">'+esc(LS.keepT)+'</div><div class="ks">'+esc(LS.keepS)+'</div></div></div>';
+    }
+    if(cur>=8){
+      h+='<div class="keepsake reveal"><span class="th">'+PHOTO_PORTRAIT+'</span><div><div class="kt">'+esc(u.famTitle)+'</div><div class="ks">'+esc(story().grand[lang])+'</div></div></div>';
     }
     if(cur>=8){
       h+='<div class="note reveal"><div class="nh"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor"><path d="M12 21s-7-4.3-9.5-8.5C1 9 3 5.5 6.5 5.5c2 0 3.2 1.1 3.5 2 .3-.9 1.5-2 3.5-2C19 5.5 23 9 21.5 12.5 19 16.7 12 21 12 21z"/></svg>'+esc(u.noteH)+'</div>';
